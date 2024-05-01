@@ -2,8 +2,8 @@
 pragma solidity 0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
-import {DecentralizedStableCoin} from "../src/DecentralizedStableCoin.sol";
-import {DeployDecentralizedStableCoin} from "../script/DeployDecentralizedStableCoin.s.sol";
+import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
+import {DeployDecentralizedStableCoin} from "../../script/DeployDecentralizedStableCoin.s.sol";
 
 contract DecentralizedStableCoinTest is Test {
     DeployDecentralizedStableCoin public deployDecentralizedStableCoin;
@@ -16,9 +16,9 @@ contract DecentralizedStableCoinTest is Test {
     uint256 public constant AMOUNT_TO_BURN = 1e18;
 
     function setUp() external {
-        deployDecentralizedStableCoin = new DeployDecentralizedStableCoin();
-        decentralizedStableCoin = deployDecentralizedStableCoin.run();
         vm.startBroadcast();
+        decentralizedStableCoin = new DecentralizedStableCoin();
+
         decentralizedStableCoin.transferOwnership(Owner);
         // decentralizedStableCoin.mint(USER, INITIAL_AMOUNT_MINTED);
         vm.stopBroadcast();
