@@ -8,8 +8,8 @@ import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/tests/MockV3Aggreg
 import {ERC20Mock} from "../test/mock/MockERC20.sol";
 
 contract HelperConfig is Script {
-    int256 constant BTC_PRICE_USD = 250000; //25000USD
-    int256 constant ETH_PRICE_USD = 3000;
+    int256 constant BTC_PRICE_USD = 600000e8; // $60,000U
+    int256 constant ETH_PRICE_USD = 3000e8; // $ 3,000
     uint8 constant CHAIN_LINK_PRICE_DECIMALS_DEFAULT = 8;
     uint256 constant DEFAULT_ANVIL_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 

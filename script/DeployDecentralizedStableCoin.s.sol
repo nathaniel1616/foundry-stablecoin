@@ -20,7 +20,13 @@ contract DeployDecentralizedStableCoin is Script {
     address[] tokenAddresses;
     address[] priceFeedAddresses;
 
-    function run() external returns (DecentralizedStableCoin, DSCEngine) {
+    /**
+     * @notice deploy the decentralized stable coin
+     * @return DecentralizedStableCoin The contract of the decentralized stable coin
+     * @return DSC Engine The contract of the DSC Engine. Which is the main contract that will be used to interact with the decentralized stable coin
+     * @return HelperConfig The contract of the HelperConfig. This contract is used to get the configuration of the network.
+     */
+    function run() external returns (DecentralizedStableCoin, DSCEngine, HelperConfig) {
         helperConfig = new HelperConfig();
         (weth, wbtc, ethUSDPriceFeed, btcUsdPriceFeed, deployer) = helperConfig.activateNetworkConfig();
         tokenAddresses = [weth, wbtc];
@@ -31,6 +37,6 @@ contract DeployDecentralizedStableCoin is Script {
         dSCEngine = new DSCEngine(tokenAddresses, priceFeedAddresses, address(decentralizedStableCoin));
         decentralizedStableCoin.transferOwnership(address(dSCEngine));
         vm.stopBroadcast();
-        return (decentralizedStableCoin, dSCEngine);
+        return (decentralizedStableCoin, dSCEngine, helperConfig);
     }
 }
