@@ -60,6 +60,8 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__MintFailed();
     error DSCEngine__HealthFactorOk();
     error DSCEngine__HealthFactorDidImproved();
+    error DSCEngine__UserHasNotDepositedCollateral();
+    error DSCEngine__UserDoesNotHaveEnoughCollateral();
 
     ////////////////////////
     /// State variables  ///
@@ -167,13 +169,13 @@ contract DSCEngine is ReentrancyGuard {
         redeemCollateral(_tokenAddress, _amountCollateral);
         //redeemCollateral already checks for _revertIfHealthFactorIsBroken(msg.sender);
     }
+
     /**
      * @notice reddeeming collateral  has to check if the user has collateral and no outstanding positions
      * the will automatically liquidaate the collatoral position
      * @param _tokenAddress   the token address of the collateral to redeem
      * @param  _amount   the amount to redeem in wei
      */
-
     function redeemCollateral(address _tokenAddress, uint256 _amount)
         public
         nonReentrant
@@ -248,7 +250,9 @@ contract DSCEngine is ReentrancyGuard {
         _revertIfHealthFactorIsBroken(msg.sender);
     }
 
-    function get_HealthFactor() external view {}
+    function getHealthFactor(address _user) external view returns (uint256) {
+        return _healthFactor(_user);
+    }
 
     /////////////////////////////////////////
     /// Private and Internal Function  //////
@@ -269,6 +273,14 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     function _redeemCollateral(address _tokenAddress, address _fromUser, address _toUser, uint256 _amount) private {
+        // when user has not deposited collateral
+        if (s_collateralDeposited[_fromUser][_tokenAddress] == 0) {
+            revert DSCEngine__UserHasNotDepositedCollateral();
+        }
+        //  when user tries to writhdrawl more than they have
+        if (s_collateralDeposited[_fromUser][_tokenAddress] < _amount) {
+            revert DSCEngine__UserDoesNotHaveEnoughCollateral();
+        }
         s_collateralDeposited[_fromUser][_tokenAddress] -= _amount; // if user tries to withdrawl more than require , the tranasction reverts, solidity complier
         emit CollateralRedeemed(_fromUser, _toUser, _tokenAddress, _amount);
         bool sucess = IERC20(_tokenAddress).transfer(_toUser, _amount);
@@ -283,7 +295,7 @@ contract DSCEngine is ReentrancyGuard {
         returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
     {
         totalDscMinted = s_DscMinted[_user];
-        collateralValueInUsd = getAccountCollateralValue(_user);
+        collateralValueInUsd = getAccountCollateralValueInUsd(_user);
     }
 
     /**
@@ -297,7 +309,18 @@ contract DSCEngine is ReentrancyGuard {
 
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(_user);
         uint256 collateratalAdjustedForThreshold =
-            (collateralValueInUsd * LIQUIDATION_THRESHOLD) * LIQUIDATION_PRECISION;
+            (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        // in the case where the user has no collateral and no DSC , the health factor will be 1
+        // this is the only time the health factor will be MIN_HEALTH_FACTOR
+        if (totalDscMinted == 0 && collateralValueInUsd == 0) {
+            return MIN_HEALTH_FACTOR;
+        }
+        if (totalDscMinted == 0) {
+            return collateratalAdjustedForThreshold;
+        }
+        if (collateralValueInUsd == 0) {
+            return 0;
+        }
         return (collateratalAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
 
@@ -333,7 +356,7 @@ contract DSCEngine is ReentrancyGuard {
         return (_amount * (uint256(price) * PRICE_PRECISION_CHAINLINK) / PRECISION);
     }
 
-    function getAccountCollateralValue(address _user) public view returns (uint256 totalCollatralValueInUsd) {
+    function getAccountCollateralValueInUsd(address _user) public view returns (uint256 totalCollatralValueInUsd) {
         // loop through each collatoral token , get  amount deposited , and convert it to usd
 
         for (uint256 i = 0; i < s_tokenAddresses.length; i++) {

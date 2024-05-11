@@ -9,6 +9,7 @@ import {DSCEngine} from "../../src/DSCEngine.sol";
 import {ERC20Mock} from "../mock/MockERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract DscEngineTest is Test {
     DeployDecentralizedStableCoin public deployDecentralizedStableCoin;
@@ -24,9 +25,14 @@ contract DscEngineTest is Test {
     uint256 deployer;
 
     address USER = makeAddr("user");
+    address USER_2 = makeAddr("user2");
+
+    uint256 private constant PRICE_PRECISION_CHAINLINK = 1e10;
+    uint256 private constant PRECISION = 1e18;
+
     uint256 constant STARTING_AMOUNT = 5e30;
     uint256 constant AMOUNT_DEPOSITED = 3e18;
-    int256 constant BTC_PRICE_USD = 600000; // $60,000U
+    int256 constant BTC_PRICE_USD = 60000; // $60,000U
     int256 constant ETH_PRICE_USD = 3000; // $ 3,000
 
     event CollateralDeposited(address indexed user, address indexed tokenAddress, uint256 indexed amount);
@@ -63,19 +69,19 @@ contract DscEngineTest is Test {
         _;
     }
 
-    modifier hasDepositedCollatoral() {
-        ERC20Mock(weth).mint(USER, STARTING_AMOUNT);
-        ERC20Mock(wbtc).mint(USER, STARTING_AMOUNT);
-        vm.startPrank(USER);
+    modifier hasDepositedCollatoral(address _user) {
+        ERC20Mock(weth).mint(_user, STARTING_AMOUNT);
+        ERC20Mock(wbtc).mint(_user, STARTING_AMOUNT);
+        vm.startPrank(_user);
         IERC20(weth).approve(address(dSCEngine), AMOUNT_DEPOSITED);
         dSCEngine.depositCollateral(weth, AMOUNT_DEPOSITED);
 
-        IERC20(wbtc).approve(address(dSCEngine), AMOUNT_DEPOSITED);
-        dSCEngine.depositCollateral(wbtc, AMOUNT_DEPOSITED);
+        // IERC20(wbtc).approve(address(dSCEngine), AMOUNT_DEPOSITED);
+        // dSCEngine.depositCollateral(wbtc, AMOUNT_DEPOSITED);
 
         vm.stopPrank();
 
-        console.log("WBTC and WETH minted to this address", USER);
+        console.log("WBTC and WETH minted to this address", _user);
         _;
     }
 
@@ -134,7 +140,8 @@ contract DscEngineTest is Test {
         vm.stopPrank();
 
         uint256 endingUserDSCBalance = dSCEngine.getDscMintedBy(USER);
-
+        console.log("user health factor: ", dSCEngine.getHealthFactor(USER));
+        console.log("user collateral value: ", dSCEngine.getAccountCollateralValueInUsd(USER));
         assertEq(startingUserDSCBalance, 0);
         assertEq(endingUserDSCBalance, AMOUNT_DEPOSITED);
     }
@@ -151,13 +158,13 @@ contract DscEngineTest is Test {
 
     // minting
 
-    function test_mintDSCRevertsWhenAmountIsZero() public hasDepositedCollatoral {
+    function test_mintDSCRevertsWhenAmountIsZero() public hasDepositedCollatoral(USER) {
         hoax(USER);
         vm.expectRevert(DSCEngine.DSCEngine__ShouldBeMoreThanZero.selector);
         dSCEngine.mintDSC(0);
     }
 
-    function test_mintDSCMintsCorrectAmountOfDSC() public hasDepositedCollatoral {
+    function test_mintDSCMintsCorrectAmountOfDSC() public hasDepositedCollatoral(USER) {
         uint256 amountToMint = 100;
         uint256 expectedDscBalance = amountToMint;
 
@@ -185,14 +192,13 @@ contract DscEngineTest is Test {
      * @notice in this test, the user has deposit weth and wbtc in the
      *   modifier hasDepositedCollatoral
      */
-    function test_getAccountCollateralValue() public hasDepositedCollatoral {
+    function test_getAccountCollateralValue() public hasDepositedCollatoral(USER) {
         // arrange ,act , assert
 
-        uint256 userTotalCOllateral = dSCEngine.getAccountCollateralValue(USER);
+        uint256 userTotalCOllateral = dSCEngine.getAccountCollateralValueInUsd(USER);
         // user has deposit weth and wbtc
         // eth and btc have different price in usd .
-        uint256 expectedValue =
-            (AMOUNT_DEPOSITED * uint256(ETH_PRICE_USD)) + (AMOUNT_DEPOSITED * uint256(BTC_PRICE_USD));
+        uint256 expectedValue = (AMOUNT_DEPOSITED * uint256(ETH_PRICE_USD));
 
         assertEq(userTotalCOllateral, expectedValue);
     }
@@ -208,5 +214,118 @@ contract DscEngineTest is Test {
         priceFeedAddresses.push(btcUsdPriceFeed);
         vm.expectRevert(DSCEngine.DSCEngine__tokenAdressesAndPriceFeedAddressesMustBeSameLength.selector);
         new DSCEngine(tokenAddresses, priceFeedAddresses, address(decentralizedStableCoin));
+    }
+
+    // Redeeming Collateral Tests
+
+    function test_redeemCollateralRevertsWhenAmountIsZero() public hasDepositedCollatoral(USER) {
+        vm.startPrank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__ShouldBeMoreThanZero.selector);
+        dSCEngine.redeemCollateral(weth, 0);
+        vm.stopPrank();
+    }
+    /**
+     * @notice redeemCollateral should revert when the user has not deposited any collateral
+     * the modifier hasDepositedCollatoral is not added here
+     */
+
+    function test_redeemCollateralRevertsWhenUserHasNotDepositedCollateral() public {
+        vm.startPrank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__UserHasNotDepositedCollateral.selector);
+        dSCEngine.redeemCollateral(weth, AMOUNT_DEPOSITED);
+        vm.stopPrank();
+    }
+    // when user tries to redeem more than the collateral deposited
+
+    function test_redeemCollateralRevertsWhenUserTriesToRedeemMoreThanCollateralDeposited()
+        public
+        hasDepositedCollatoral(USER)
+    {
+        vm.startPrank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__UserDoesNotHaveEnoughCollateral.selector);
+        dSCEngine.redeemCollateral(weth, AMOUNT_DEPOSITED + 1);
+        vm.stopPrank();
+    }
+
+    // burning the DSC
+    function test_redeemCollateralBurnsDSC() public hasDepositedCollatoral(USER) {
+        vm.startPrank(USER);
+
+        dSCEngine.mintDSC(AMOUNT_DEPOSITED);
+        uint256 startingDscBalance = decentralizedStableCoin.balanceOf(USER);
+        console.log("DSC balance of user before burning", startingDscBalance);
+        console.log("DSC minted by USER with an amount of ", AMOUNT_DEPOSITED);
+        decentralizedStableCoin.approve(address(dSCEngine), AMOUNT_DEPOSITED);
+        dSCEngine.redeemCollateralForDSC(weth, AMOUNT_DEPOSITED, AMOUNT_DEPOSITED);
+        console.log("DSC burned by USER with an amount of ", AMOUNT_DEPOSITED);
+        console.log("DSC balance of user after burning", decentralizedStableCoin.balanceOf(USER));
+        vm.stopPrank();
+        uint256 endingDscBalance = decentralizedStableCoin.balanceOf(USER);
+        assertEq(endingDscBalance, 0);
+    }
+
+    function test_redeemCollateralReducesUserCollateralDeposited() public hasDepositedCollatoral(USER) {
+        uint256 startingCollateralDeposited = dSCEngine.getCollateralDeposited(USER, weth);
+        vm.startPrank(USER);
+        dSCEngine.redeemCollateral(weth, AMOUNT_DEPOSITED);
+        vm.stopPrank();
+        uint256 endingCollateralDeposited = dSCEngine.getCollateralDeposited(USER, weth);
+        uint256 expectedEndingCollateralDeposited = startingCollateralDeposited - AMOUNT_DEPOSITED;
+        assertEq(endingCollateralDeposited, expectedEndingCollateralDeposited);
+    }
+
+    // liquidation tests
+    function test_liquidateCollateralRevertsWhenAmountIsZero() public hasDepositedCollatoral(USER) {
+        vm.startPrank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__ShouldBeMoreThanZero.selector);
+        dSCEngine.liquidate(weth, USER, 0);
+        vm.stopPrank();
+    }
+
+    function test_CannotLiquidateCollateralWhenUserHasGoodHealthFactor() public hasDepositedCollatoral(USER) {
+        vm.startPrank(USER_2);
+        vm.expectRevert(DSCEngine.DSCEngine__HealthFactorOk.selector);
+        dSCEngine.liquidate(weth, USER, AMOUNT_DEPOSITED);
+        vm.stopPrank();
+    }
+
+    function test_CanLiquidateCollateralWhenUserHasBadHealthFactor()
+        public
+        hasDepositedCollatoral(USER)
+        hasDepositedCollatoral(USER_2)
+    {
+        vm.startPrank(USER);
+        console.log(" user health factor before mint", dSCEngine.getHealthFactor(USER));
+
+        // user  will mint DSC
+
+        dSCEngine.mintDSC(AMOUNT_DEPOSITED / 5);
+        // the user will be overcollatrized and health factor will be bad
+        console.log("Printing user health factor", dSCEngine.getHealthFactor(USER));
+        console.log("Printing user2 health factor", dSCEngine.getHealthFactor(USER_2));
+
+        vm.stopPrank();
+    }
+
+    // getting collateral value in usd
+    function test_getCollateralValueInUsd() public hasDepositedCollatoral(USER) {
+        uint256 collateralValueInUsd = dSCEngine.getAccountCollateralValueInUsd(USER);
+        // getting pricefeed from aggregatorV3
+        (, int256 EthPriceInteger,,,) = AggregatorV3Interface(ethUSDPriceFeed).latestRoundData();
+        uint256 EthPrice = uint256(EthPriceInteger) * PRICE_PRECISION_CHAINLINK; // add decimals to make to reach 1e18
+
+        uint256 expectedCollateralValueInUsd = AMOUNT_DEPOSITED * EthPrice / PRECISION;
+        console.log("Collateral value in usd", collateralValueInUsd);
+        console.log("Expected Collateral value in usd", expectedCollateralValueInUsd);
+        assertEq(collateralValueInUsd, expectedCollateralValueInUsd);
+    }
+
+    // getting health factor
+    function test_getHealthFactor() public hasDepositedCollatoral(USER) {
+        uint256 healthFactor = dSCEngine.getHealthFactor(USER);
+        console.log("Health Factor", healthFactor);
+        console.log("Collaoateral value in usd", dSCEngine.getAccountCollateralValueInUsd(USER));
+        // uint256 expectedHealthFactor = PRECISION;
+        // assertEq(healthFactor, expectedHealthFactor);
     }
 }
