@@ -312,15 +312,12 @@ contract DSCEngine is ReentrancyGuard {
             (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
         // in the case where the user has no collateral and no DSC , the health factor will be 1
         // this is the only time the health factor will be MIN_HEALTH_FACTOR
-        if (totalDscMinted == 0 && collateralValueInUsd == 0) {
-            return MIN_HEALTH_FACTOR;
-        }
+
         if (totalDscMinted == 0) {
-            return collateratalAdjustedForThreshold;
+            // returns the maximum value of uint256
+            return type(uint256).max;
         }
-        if (collateralValueInUsd == 0) {
-            return 0;
-        }
+
         return (collateratalAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
 

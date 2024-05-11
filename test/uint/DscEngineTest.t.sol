@@ -81,7 +81,7 @@ contract DscEngineTest is Test {
 
         vm.stopPrank();
 
-        console.log("WBTC and WETH minted to this address", _user);
+        console.log("WETH minted to this address", _user);
         _;
     }
 
@@ -144,6 +144,33 @@ contract DscEngineTest is Test {
         console.log("user collateral value: ", dSCEngine.getAccountCollateralValueInUsd(USER));
         assertEq(startingUserDSCBalance, 0);
         assertEq(endingUserDSCBalance, AMOUNT_DEPOSITED);
+    }
+
+    // cannot deposit and mint all the colatoral value
+    function test_depositCollateralAndMintDSCRevertsWhenUserTriesToMintAllCollateral() public userHasWethAndWBTC {
+        vm.startPrank(USER);
+        IERC20(weth).approve(address(dSCEngine), AMOUNT_DEPOSITED);
+        console.log("Starting  Weth Balance of User: ", IERC20(weth).balanceOf(USER));
+        console.log("starting user health factor: ", dSCEngine.getHealthFactor(USER));
+
+        uint256 userCollateralValue = dSCEngine.getAccountCollateralValueInUsd(USER);
+        // vm.expectRevert();
+
+        //depositing collateral
+        dSCEngine.depositCollateral(weth, AMOUNT_DEPOSITED);
+        console.log("user health factor after deposited collatoral: ", dSCEngine.getHealthFactor(USER));
+        console.log("user collateral value: ", dSCEngine.getAccountCollateralValueInUsd(USER));
+
+        // minting DSC
+        dSCEngine.mintDSC(dSCEngine.getCollateralDeposited(USER, weth));
+        console.log("after minting");
+        console.log("user health factor: ", dSCEngine.getHealthFactor(USER));
+        console.log("user collateral deposited: ", dSCEngine.getCollateralDeposited(USER, weth));
+        console.log("DsC minted by user", dSCEngine.getDscMintedBy(USER));
+        console.log("Weth deposited by user", dSCEngine.getCollateralDeposited(USER, weth));
+        console.log("Ending Weth Balance of User: ", IERC20(weth).balanceOf(USER));
+
+        vm.stopPrank();
     }
 
     // function test_depositCollateralAndGetAccountInfo() public userHasWethAndWBTC {
@@ -299,10 +326,10 @@ contract DscEngineTest is Test {
 
         // user  will mint DSC
 
-        dSCEngine.mintDSC(AMOUNT_DEPOSITED / 5);
+        dSCEngine.mintDSC(AMOUNT_DEPOSITED);
         // the user will be overcollatrized and health factor will be bad
-        console.log("Printing user health factor", dSCEngine.getHealthFactor(USER));
-        console.log("Printing user2 health factor", dSCEngine.getHealthFactor(USER_2));
+        console.log("DsC minted by user             ", dSCEngine.getDscMintedBy(USER));
+        console.log(" user health factor after  mint", dSCEngine.getHealthFactor(USER));
 
         vm.stopPrank();
     }
@@ -325,7 +352,7 @@ contract DscEngineTest is Test {
         uint256 healthFactor = dSCEngine.getHealthFactor(USER);
         console.log("Health Factor", healthFactor);
         console.log("Collaoateral value in usd", dSCEngine.getAccountCollateralValueInUsd(USER));
-        // uint256 expectedHealthFactor = PRECISION;
-        // assertEq(healthFactor, expectedHealthFactor);
+        uint256 expectedHealthFactor = type(uint256).max;
+        assertEq(healthFactor, expectedHealthFactor);
     }
 }
