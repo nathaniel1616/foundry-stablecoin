@@ -8,9 +8,9 @@ import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/tests/MockV3Aggreg
 import {ERC20Mock} from "../test/mock/MockERC20.sol";
 
 contract HelperConfig is Script {
-    int256 constant BTC_PRICE_USD = 600000e8; // $60,000U
-    int256 constant ETH_PRICE_USD = 3000e8; // $ 3,000
-    uint8 constant CHAIN_LINK_PRICE_DECIMALS_DEFAULT = 8;
+    int256 public constant BTC_PRICE_USD = 600000e8; // $60,000U
+    int256 public constant ETH_PRICE_USD = 3000e8; // $ 3,000
+    uint8 public constant CHAIN_LINK_PRICE_DECIMALS_DEFAULT = 8;
     uint256 constant DEFAULT_ANVIL_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
     address weth;
@@ -36,7 +36,7 @@ contract HelperConfig is Script {
 
     function getSepoliaConfig() public view returns (NetworkConfig memory) {
         return NetworkConfig({
-            weth: 0x694AA1769357215DE4FAC081bf1f309aDC325306,
+            weth: 0xD341D0f0Ad5d9dB4Cf5dC9929743d8F761Ec6418,
             wbtc: 0x694AA1769357215DE4FAC081bf1f309aDC325306,
             ethUSDPriceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306,
             btcUsdPriceFeed: 0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43,

@@ -154,7 +154,6 @@ contract DscEngineTest is Test {
         console.log("starting user health factor: ", dSCEngine.getHealthFactor(USER));
 
         uint256 userCollateralValue = dSCEngine.getAccountCollateralValueInUsd(USER);
-        // vm.expectRevert();
 
         //depositing collateral
         dSCEngine.depositCollateral(weth, AMOUNT_DEPOSITED);
@@ -162,7 +161,8 @@ contract DscEngineTest is Test {
         console.log("user collateral value: ", dSCEngine.getAccountCollateralValueInUsd(USER));
 
         // minting DSC
-        dSCEngine.mintDSC(dSCEngine.getCollateralDeposited(USER, weth));
+        // vm.expectRevert();
+        dSCEngine.mintDSC(userCollateralValue + 1);
         console.log("after minting");
         console.log("user health factor: ", dSCEngine.getHealthFactor(USER));
         console.log("user collateral deposited: ", dSCEngine.getCollateralDeposited(USER, weth));
@@ -251,17 +251,18 @@ contract DscEngineTest is Test {
         dSCEngine.redeemCollateral(weth, 0);
         vm.stopPrank();
     }
+
     /**
      * @notice redeemCollateral should revert when the user has not deposited any collateral
      * the modifier hasDepositedCollatoral is not added here
      */
-
     function test_redeemCollateralRevertsWhenUserHasNotDepositedCollateral() public {
         vm.startPrank(USER);
         vm.expectRevert(DSCEngine.DSCEngine__UserHasNotDepositedCollateral.selector);
         dSCEngine.redeemCollateral(weth, AMOUNT_DEPOSITED);
         vm.stopPrank();
     }
+
     // when user tries to redeem more than the collateral deposited
 
     function test_redeemCollateralRevertsWhenUserTriesToRedeemMoreThanCollateralDeposited()
@@ -341,7 +342,7 @@ contract DscEngineTest is Test {
         (, int256 EthPriceInteger,,,) = AggregatorV3Interface(ethUSDPriceFeed).latestRoundData();
         uint256 EthPrice = uint256(EthPriceInteger) * PRICE_PRECISION_CHAINLINK; // add decimals to make to reach 1e18
 
-        uint256 expectedCollateralValueInUsd = AMOUNT_DEPOSITED * EthPrice / PRECISION;
+        uint256 expectedCollateralValueInUsd = (AMOUNT_DEPOSITED * EthPrice) / PRECISION;
         console.log("Collateral value in usd", collateralValueInUsd);
         console.log("Expected Collateral value in usd", expectedCollateralValueInUsd);
         assertEq(collateralValueInUsd, expectedCollateralValueInUsd);
