@@ -2,3 +2,5 @@ ideas
 should we allow the user to liquidate themselves , cos they will get a bonus if they so.
 but in odrer to liquidate, the liquidate must pay the outstanding debts of the other
  
+What are invariants?
+Invariants are properities in the contract that should always hold true

@@ -254,6 +254,14 @@ contract DSCEngine is ReentrancyGuard {
         return _healthFactor(_user);
     }
 
+    function calculatedHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd)
+        external
+        pure
+        returns (uint256)
+    {
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
     /////////////////////////////////////////
     /// Private and Internal Function  //////
     /////////////////////////////////////////
@@ -303,21 +311,30 @@ contract DSCEngine is ReentrancyGuard {
      * if the a users goers belwow 1 , then they can get liquidated
      * @param _user  address of the user
      */
-    function _healthFactor(address _user) internal view returns (uint256) {
+    function _healthFactor(address _user) internal view returns (uint256 healthFactor) {
         // get total DSC minted for the user
         //  get the entire collateral values
 
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(_user);
-        uint256 collateratalAdjustedForThreshold =
-            (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
-        // in the case where the user has no collateral and no DSC , the health factor will be 1
-        // this is the only time the health factor will be MIN_HEALTH_FACTOR
 
+        healthFactor = _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
+    // calculate healthfactor function
+
+    function _calculateHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd)
+        internal
+        pure
+        returns (uint256)
+    {
         if (totalDscMinted == 0) {
+            // in the case where the user has no collateral and no DSC , the health factor will be 1
+            // this is the only time the health factor will be MIN_HEALTH_FACTOR
             // returns the maximum value of uint256
             return type(uint256).max;
         }
-
+        uint256 collateratalAdjustedForThreshold =
+            (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
         return (collateratalAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
 

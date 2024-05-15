@@ -29,8 +29,8 @@ contract DeployDecentralizedStableCoin is Script {
     function run() external returns (DecentralizedStableCoin, DSCEngine, HelperConfig) {
         helperConfig = new HelperConfig();
         (weth, wbtc, ethUSDPriceFeed, btcUsdPriceFeed, deployer) = helperConfig.activateNetworkConfig();
-        tokenAddresses = [weth];
-        priceFeedAddresses = [ethUSDPriceFeed];
+        tokenAddresses = [weth, wbtc];
+        priceFeedAddresses = [ethUSDPriceFeed, btcUsdPriceFeed];
 
         vm.startBroadcast();
         decentralizedStableCoin = new DecentralizedStableCoin();
