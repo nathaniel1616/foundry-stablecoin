@@ -19,3 +19,5 @@ docs/
 
 # A txt file for forge coverage-- report debug 
 coverage.txt
+.swp
+*.dot
