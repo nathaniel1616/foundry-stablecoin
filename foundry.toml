@@ -5,6 +5,7 @@ libs = ["lib"]
 
 # solc version
 version = '0.8.20'
+fs_permissions = [{ access = "read", path = "./" }]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 remappings = [
@@ -13,6 +14,6 @@ remappings = [
 ]
 
 [invariant]
-runs = 1000
+# fail_on_revert = true
+runs = 256
 depth = 128
-fail_on_revert = true

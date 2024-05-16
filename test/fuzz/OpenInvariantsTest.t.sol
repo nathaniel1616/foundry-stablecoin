@@ -31,7 +31,7 @@ contract OpenInvariantsTest is StdInvariant, Test {
     }
     // invariant test
 
-    function invariant_protocolMustHaveMoreCollateralThanDSCSupply() public view {
+    function invariant_OpenProtocolMustHaveMoreCollateralThanDSCSupply() public view {
         uint256 dscSupply = decentralizedStableCoin.totalSupply();
 
         uint256 totalWethDeposited = IERC20(weth).balanceOf(address(dscEngine));

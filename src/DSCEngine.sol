@@ -250,18 +250,6 @@ contract DSCEngine is ReentrancyGuard {
         _revertIfHealthFactorIsBroken(msg.sender);
     }
 
-    function getHealthFactor(address _user) external view returns (uint256) {
-        return _healthFactor(_user);
-    }
-
-    function calculatedHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd)
-        external
-        pure
-        returns (uint256)
-    {
-        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
-    }
-
     /////////////////////////////////////////
     /// Private and Internal Function  //////
     /////////////////////////////////////////
@@ -384,6 +372,18 @@ contract DSCEngine is ReentrancyGuard {
     /////////////////////////////////////////
     /// Getters and Public Function  ///////
     /////////////////////////////////////////
+
+    function getHealthFactor(address _user) external view returns (uint256) {
+        return _healthFactor(_user);
+    }
+
+    function calculatedHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd)
+        external
+        pure
+        returns (uint256)
+    {
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
     /**
      * @notice this function is to covert the USD price of the token to the number of token you
      * can get for it . eg
@@ -393,6 +393,7 @@ contract DSCEngine is ReentrancyGuard {
      * @param tokenAddress Address of the token
      * @param usdAmountInWei The USD amount to convert to amount crypto you can have
      */
+
     function getTokenAmountFromUsd(address tokenAddress, uint256 usdAmountInWei)
         public
         view
@@ -420,5 +421,38 @@ contract DSCEngine is ReentrancyGuard {
 
     function getDscMintedBy(address _user) public view returns (uint256) {
         return s_DscMinted[_user];
+    }
+
+    // get Account Information of User
+    function getAccountInformation(address _user)
+        public
+        view
+        returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
+    {
+        return _getAccountInformation(_user);
+    }
+
+    function getMinimumHealthFactor() public pure returns (uint256) {
+        return MIN_HEALTH_FACTOR;
+    }
+
+    function getPricePrecisionChainlink() public pure returns (uint256) {
+        return PRICE_PRECISION_CHAINLINK;
+    }
+
+    function getPrecision() public pure returns (uint256) {
+        return PRECISION;
+    }
+
+    function getLiquidationThreshold() public pure returns (uint256) {
+        return LIQUIDATION_THRESHOLD;
+    }
+
+    function getLiquidationBonus() public pure returns (uint256) {
+        return LIQUIDATION_BONUS;
+    }
+
+    function getLiquidationPrecision() public pure returns (uint256) {
+        return LIQUIDATION_PRECISION;
     }
 }
