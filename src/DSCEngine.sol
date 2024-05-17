@@ -29,6 +29,7 @@ import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {OracleLib} from "./OracleLib.sol";
 
 /**
  * @title DSCEngine
@@ -49,6 +50,11 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
  * @notice this contract is VERY lossely based on the MakerDAO DSS(DAI) system
  */
 contract DSCEngine is ReentrancyGuard {
+    //////////////////
+    /// Libraries  ///
+    //////////////////
+    using OracleLib for AggregatorV3Interface;
+
     /////////////////
     /// Errors  ///
     /////////////////
@@ -350,7 +356,7 @@ contract DSCEngine is ReentrancyGuard {
      */
     function getAmountInUsd(address _tokenAdress, uint256 _amount) public view returns (uint256) {
         address priceFeedAddress = s_tokenToPriceFeed[_tokenAdress];
-        (, int256 price,,,) = AggregatorV3Interface(priceFeedAddress).latestRoundData();
+        (, int256 price,,,) = AggregatorV3Interface(priceFeedAddress).stalePrice();
         // 1 ETH = 1000 USD
         // The returned value from Chainlink will be 1000 * 1e8
         // Most USD pairs have 8 decimals, so we will just pretend they all do
@@ -400,7 +406,7 @@ contract DSCEngine is ReentrancyGuard {
         returns (uint256 amountOfToken)
     {
         address priceFeedAddress = s_tokenToPriceFeed[tokenAddress];
-        (, int256 price,,,) = AggregatorV3Interface(priceFeedAddress).latestRoundData();
+        (, int256 price,,,) = AggregatorV3Interface(priceFeedAddress).stalePrice();
         //        eg.    ($10e18 )
         amountOfToken = (usdAmountInWei * PRECISION) / (uint256(price) * PRICE_PRECISION_CHAINLINK);
     }
@@ -413,6 +419,10 @@ contract DSCEngine is ReentrancyGuard {
      */
     function getTokenaddress(uint256 _index) public view returns (address) {
         return s_tokenAddresses[_index];
+    }
+
+    function getPriceFeedAddressFromTokenAddress(address token) public view returns (address) {
+        return s_tokenToPriceFeed[token];
     }
 
     function getCollateralDeposited(address _user, address token) public view returns (uint256) {

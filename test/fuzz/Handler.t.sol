@@ -7,12 +7,15 @@ import {Test, console} from "forge-std/Test.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {ERC20Mock} from "../mock/MockERC20.sol";
+import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/tests/MockV3Aggregator.sol";
 
 contract Handler is Test {
     DSCEngine dscEngine;
     DecentralizedStableCoin decentralizedStableCoin;
     address weth;
     address wbtc;
+    MockV3Aggregator ethUSDPriceFeed;
+    MockV3Aggregator btcUsdPriceFeed;
     uint256 constant STARTING_AMOUNT = 1e30;
     address[] public hasCollateral;
 
@@ -30,6 +33,8 @@ contract Handler is Test {
         decentralizedStableCoin = _decentralizedStableCoin;
         weth = dscEngine.getTokenaddress(0);
         wbtc = dscEngine.getTokenaddress(1);
+        ethUSDPriceFeed = MockV3Aggregator(dscEngine.getPriceFeedAddressFromTokenAddress(weth));
+        btcUsdPriceFeed = MockV3Aggregator(dscEngine.getPriceFeedAddressFromTokenAddress(wbtc));
     }
 
     function depositCollateral(uint256 collateralSwapper, uint96 _amount) public {
@@ -71,26 +76,9 @@ contract Handler is Test {
         NumOfMints++;
     }
 
-    // function mintDSC2(uint256 _amount) public {
-    //     (uint256 totalDscMinted, uint256 collateralDeposited) = dscEngine.getAccountInformation(msg.sender);
-    //     int256 maxDscToMint = (int256(collateralDeposited) / 2) - int256(totalDscMinted);
-
-    //     console.log("maxDscToMint of the msg.sender: ", uint256(maxDscToMint));
-    //     if (maxDscToMint < 0) {
-    //         return;
-    //     }
-    //     console.log("before bound funct :", _amount);
-    //     uint256 amount = bound(_amount, 0, uint256(maxDscToMint));
-    //     console.log("bound ***amount variable in mint :", amount);
-    //     if (_amount == 0) {
-    //         return;
-    //     }
-    //     NumofMints2++;
-    //     vm.startPrank(msg.sender);
-    //     dscEngine.mintDSC(_amount);
-    //     vm.stopPrank();
-    // }
-    //redeeming collateral
+    /// @notice     redeeming collateral
+    /// @param _amount token amount in wei to redeem
+    /// @param depositSeed  a random number to select a randomly select a user who has collatoral deposited
 
     function redeeemCollateral( /*uint256 collateralSwapper,*/ uint96 _amount, uint256 depositSeed) public {
         // _setTokenAddress(collateralSwapper);
@@ -116,6 +104,12 @@ contract Handler is Test {
 
         NumOfRedeems++;
     }
+    //when price tanks too much , it affects the protocol
+    // function updateETHCollatoralPrice(uint96 newPirce) public {
+    //     int256 price = int256(uint256(newPirce));
+    //     price = bound(price, 1000 * 1e8, 5000 * 1e8);
+    //     ethUSDPriceFeed.updateAnswer(price);
+    // }
 
     // helper function
     // get correct token address and Swap them randomly for handler
